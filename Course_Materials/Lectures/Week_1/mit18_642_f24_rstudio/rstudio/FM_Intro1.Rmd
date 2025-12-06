@@ -3,9 +3,9 @@ title: "FM_Intro1"
 author: '18.642'
 date: "2024-09-04"
 output:
-  pdf:
+  pdf_document:
     toc: true
-  html:
+  html_document:
     toc: true
     toc_float: true
 ---
@@ -23,7 +23,7 @@ options(warn = -1)
 # 0. Load packages ----
 library("tidyquant")
 library("tidyverse")
-library("fpp3")
+library("fpp2")
 
 ```
 
@@ -286,7 +286,6 @@ market_data |>
 
 save(file="data_fm_intro1.Rdata",list=ls())
 ```
-
 
 
 

@@ -16,7 +16,7 @@ output:
 library("quantmod")  
 library("tseries")  
 library("ggplot2")
-library("reshape2")
+library("tidyr")
 library("tidyverse")
 library("tidyquant")
 library("car")

@@ -271,7 +271,7 @@ volmat0.Close<-volmat0$Close
 ggAcf(volmat0.Close)
 volmat0.Close.naive<-naive(volmat0.Close)
 checkresiduals(volmat0.Close.naive)
-forecast(volmat0.Close.naive)  %>% autoplot()
+forecast(volmat0.Close.naive)  |> autoplot()
 accuracy.volmat0.Close.naive<-accuracy(volmat0.Close.naive)
 accuracy.volmat0.Close.naive
 MAPE.volmat0.Close.naive<-accuracy.volmat0.Close.naive[1,5]
@@ -292,7 +292,7 @@ ggAcf(volmat0.Close, type="partial")
 volmat0.Close.arima<-auto.arima(volmat0.Close)
 volmat0.Close.arima
 checkresiduals(volmat0.Close.arima)
-forecast(volmat0.Close.arima) %>% autoplot()
+forecast(volmat0.Close.arima) |> autoplot()
 accuracy(volmat0.Close.arima)
 ```
 
@@ -308,7 +308,7 @@ y.YZ<- volmat0$YZ
 ggAcf(y.YZ)
 y.YZ.naive<-naive(y.YZ)
 checkresiduals(y.YZ.naive)
-forecast(y.YZ.naive)  %>% autoplot()
+forecast(y.YZ.naive)  |> autoplot()
 accuracy.YZ.naive<-accuracy(y.YZ.naive)
 accuracy.YZ.naive
 MAPE.YZ.naive<-accuracy.YZ.naive[1,5]
@@ -325,7 +325,7 @@ ggAcf(volmat0.YZ, type="partial")
 volmat0.YZ.arima<-auto.arima(volmat0.YZ)
 volmat0.YZ.arima
 checkresiduals(volmat0.YZ.arima)
-forecast(volmat0.YZ.arima) %>% autoplot()
+forecast(volmat0.YZ.arima) |> autoplot()
 accuracy(volmat0.YZ.arima)
 ```
 
@@ -352,7 +352,7 @@ ggAcf(volmat0.Close, type="partial")
 volmat0.dClose.arima<-auto.arima(diff(volmat0.Close))
 volmat0.dClose.arima
 checkresiduals(volmat0.dClose.arima)
-forecast(volmat0.dClose.arima) %>% autoplot() + xlab("Time (multiples of 21 days)")
+forecast(volmat0.dClose.arima) |> autoplot() + xlab("Time (multiples of 21 days)")
 accuracy(volmat0.dClose.arima)
 ```
 
@@ -372,7 +372,7 @@ ggAcf(volmat0.YZ, type="partial")
 volmat0.YZ.arima<-auto.arima(volmat0.YZ)
 volmat0.YZ.arima
 checkresiduals(volmat0.YZ.arima)
-forecast(volmat0.YZ.arima) %>% autoplot() + xlab("Time (multiples of 21 days)")
+forecast(volmat0.YZ.arima) |> autoplot() + xlab("Time (multiples of 21 days)")
 accuracy.volmat0.YZ.arima<-accuracy(volmat0.YZ.arima)
 accuracy.volmat0.YZ.arima
 MAPE.volmat0.YZ.arima<- accuracy.volmat0.YZ.arima[1,5]

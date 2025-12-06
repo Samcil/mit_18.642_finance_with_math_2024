@@ -22,7 +22,7 @@ library(broom)
 #0.1 Define functions ----
 #The following functions explicitly compute annual, monthly and weekly returns
 get_annual_returns <- function(stock.returns) {
-  stock.returns %>%
+  stock.returns |>
     tq_transmute(select     = adjusted, 
                  mutate_fun = periodReturn, 
                  type       = "log", 
@@ -30,7 +30,7 @@ get_annual_returns <- function(stock.returns) {
 }
 
 get_monthly_returns <- function(stock.returns) {
-  stock.returns %>%
+  stock.returns |>
     tq_transmute(select     = adjusted, 
                  mutate_fun = periodReturn, 
                  type       = "log", 
@@ -38,7 +38,7 @@ get_monthly_returns <- function(stock.returns) {
 }
 
 get_weekly_returns <- function(stock.returns) {
-  stock.returns %>%
+  stock.returns |>
     tq_transmute(select     = adjusted, 
                  mutate_fun = periodReturn, 
                  type       = "log", 
@@ -46,7 +46,7 @@ get_weekly_returns <- function(stock.returns) {
 }
 
 get_daily_returns <- function(stock.returns) {
-  stock.returns %>%
+  stock.returns |>
     tq_transmute(select     = adjusted, 
                  mutate_fun = periodReturn, 
                  type       = "log", 
@@ -107,9 +107,9 @@ list_group<-unique(stocks_tbl0$group)
 #for (group0 in list_group[-c(1:4)]){
   
 for (group0 in list_group) {
-  stocks_data <- stocks_tbl0 %>%
-    filter(group==group0) %>%
-    select(symbol, company) %>%
+  stocks_data <- stocks_tbl0 |>
+    filter(group==group0) |>
+    select(symbol, company) |>
     tq_get(from = date_start, to=date_end)
 assign(paste("stocks_data",group0,sep="."),
        stocks_data)
@@ -144,13 +144,13 @@ dim(stocks_data)
 ## 1.5 Convert stocks_data to time series matrix 
 
 ```{r}
-stocks_data1 <- stocks_data %>% 
-  dplyr::select(symbol, date, adjusted) %>% 
-  dplyr::filter(!is.na(adjusted)) %>% 
+stocks_data1 <- stocks_data |> 
+  dplyr::select(symbol, date, adjusted) |> 
+  dplyr::filter(!is.na(adjusted)) |> 
   dplyr::rename(price = adjusted)
   
 
-stocks_tsmatrix<- stocks_data1 %>%
+stocks_tsmatrix<- stocks_data1 |>
   pivot_wider(names_from = symbol, values_from = price)
 
 dim(stocks_tsmatrix)

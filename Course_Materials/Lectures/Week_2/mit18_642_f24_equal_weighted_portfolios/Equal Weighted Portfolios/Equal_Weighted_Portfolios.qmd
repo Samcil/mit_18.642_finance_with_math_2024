@@ -28,7 +28,7 @@ options(warn = -1)
 # 0. Load packages ----
 library("tidyquant")
 library("tidyverse")
-library("fpp2")
+library("fpp3")
 library("broom")
 
 ```
