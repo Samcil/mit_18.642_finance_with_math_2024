@@ -3,9 +3,9 @@ title: "ETF Casestudy"
 author: "Peter Kempthorne"
 date: "2024-09-23"
 output:
-  pdf_document:
+  pdf:
     toc: true
-  html_document:
+  html:
     toc: true
     toc_float: true
 ---
@@ -688,6 +688,7 @@ barplot(t(as.matrix(tab.betas2)), beside=TRUE,
         col=rainbow(5), cex.names=.5,
         legend=TRUE, args.legend=list(cex=.7))
 title(main="Regression Coefficients By Method")
+
 
 
 

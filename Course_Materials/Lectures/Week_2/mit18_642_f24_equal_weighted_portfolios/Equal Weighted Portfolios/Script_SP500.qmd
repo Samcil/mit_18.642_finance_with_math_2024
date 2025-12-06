@@ -3,9 +3,9 @@ title: "Script_SP500"
 author: '18.642'
 date: "2024-09-10"
 output:
-  pdf_document:
+  pdf:
     toc: true
-  html_document:
+  html:
     toc: true
 ---
 
@@ -218,4 +218,5 @@ stocks_tbl<-stocks_tbl0_tsmatrix0
 
 save(file="SP500_data_subset.RData", list=c("stocks_tbl","stocks_prices"))
 ```
+
 

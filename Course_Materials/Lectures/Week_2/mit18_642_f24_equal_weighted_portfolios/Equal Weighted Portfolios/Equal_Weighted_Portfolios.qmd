@@ -3,10 +3,10 @@ title: "Equal Weighted Portfolios"
 author: '18.642'
 date: "2024-09-10"
 output:
-  html_document:
+  html:
     toc: true
     toc_float: true
-  pdf_document:
+  pdf:
     toc: true
 ---
 
@@ -166,4 +166,5 @@ ggplot(df_all, aes(x=date,y=Value, col=symbol))+
   ggtitle("Value of $250 Invested on 2019-01-01")+
   scale_y_continuous(labels= scales::dollar_format())
 ```  
+
 

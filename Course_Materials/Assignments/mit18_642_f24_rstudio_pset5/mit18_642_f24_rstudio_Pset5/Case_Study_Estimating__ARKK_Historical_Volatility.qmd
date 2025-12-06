@@ -3,9 +3,9 @@ title: "Case Study: Estimating Historical Volatility of ARKK Stock"
 author: "Peter J. Kempthorne"
 date: "2024-11-11"
 output:
-  pdf_document:
+  pdf:
     toc: true
-  html_document:
+  html:
     toc: true
 
 ---
@@ -446,4 +446,5 @@ of Business, 73(3):477-492.
 
 
 * Hyndman, Rob J, and Athanasopoulos, George (2018) Forecasting: Principles and Practice (2nd ed), \url{https://otexts.com/fpp2/}
+
 

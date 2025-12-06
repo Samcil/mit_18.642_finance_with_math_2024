@@ -3,9 +3,9 @@ title: "FM_Intro1"
 author: '18.642'
 date: "2024-09-04"
 output:
-  pdf_document:
+  pdf:
     toc: true
-  html_document:
+  html:
     toc: true
     toc_float: true
 ---
@@ -286,6 +286,7 @@ market_data %>%
 
 save(file="data_fm_intro1.Rdata",list=ls())
 ```
+
 
 
 
