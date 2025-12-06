@@ -1,0 +1,448 @@
+---
+title: "Case Study: Estimating Historical Volatility of SP500 Stock  Index"
+author: "Peter J. Kempthorne"
+date: "2024-11-11"
+output:
+  pdf_document:
+    toc: true
+  html_document:
+    toc: true
+
+---
+
+```{r setup, include=FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache=TRUE, warning=FALSE, message=FALSE)
+```
+
+\newpage
+# 1. Measuring Volatility with Daily OHLC Data
+
+
+In the following sections we introduce alternative measures of volatility based on  daily bar price data. The notation for different symbols are given in the following table
+
+
+$\begin{array}{|l|l|}
+\hline
+Symbol & Description\\ \hline 
+\sigma & \textrm{ Volatility    }\\
+N & \textrm{ Number of closing prices in a year}\\
+n & \textrm{ Number of historical prices used for the volatility estimate}\\
+O_i  & \textrm{ The opening price }\\
+H_i  & \textrm{ The high }\\
+L_i  & \textrm{ The low }\\
+C_i  & \textrm{ The close}\\
+\hline
+\end{array}$
+
+
+
+We illustrate the different measures with the S\&P 500 Index.
+First, import prices of S\&P500 Index and SP500 Stock using the function tq\_get() from the library tidyquant.
+
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(tidyquant)
+library(fpp2)
+```
+```{r,echo=TRUE}
+# To make code reproducible, fix the end.date of the price data
+
+SP500<-tq_get("^GSPC", to="2024-10-31")
+
+symbolname0<-"SP500"
+
+```
+
+The object SP500 consists of daily bar data, collected from \url{finance.yahoo.com}
+
+```{r}
+dim(SP500)
+head(SP500)
+tail(SP500)
+```
+
+```{r}
+
+ggplot(data.frame(SP500), aes(x=date, y=close)) + geom_line() +
+  labs(title=symbolname0)
+
+```
+
+The following sections provide the definitions of different measures of historical volatility
+measures.
+
+We set $n=21$, the number
+of periods for the volatility estimate  which corresponds to the typical number of business days in a month.
+
+\newpage
+## 1.1 Close-to-Close Volatility
+
+
+Historical volatility calculation using close-to-close prices.
+
+$\begin{array}{lcl}r_i &=&\ln\left(\frac{C_{i+1}}{C_i}\right) \\
+\bar{r} &=& \frac{r_1+r_2+\ldots r_{n-1}}{n-1}\\
+\sigma &=& \sqrt{\frac{N}{n-2} \sum_{i=1}^{n-1}(r_i-\bar{r})^2} \\
+\end{array}$
+
+Note that the historical volatility is computed from a time series of $n$ closing prices.
+The annualized volatility is computed using an unbiased estimate of the (n-1) period variance of the close-to-close returns.
+
+The 21-day variance is scaled up to an N=252 day horizon corresponding to typical annual period of days.
+
+
+
+```{r}
+#help("volatility")
+SP500.vol.close<-volatility( SP500[,3:6], n=21, calc="close", N=252)
+SP500.vol.close.0<- xts(x=SP500.vol.close, order.by=SP500$date)
+autoplot(SP500.vol.close.0)
+
+```
+
+\newpage
+## 1.2 Parkinson High-Low Volatility
+
+The  Parkinson formula  for estimating the historical volatility of an underlying is  based on only the daily  high and low prices.
+
+$\sigma = \sqrt{\frac{N}{n 4 \ln 2}\sum_{i=1}^{n}\left(\ln \frac{H_i}{L_i}\right)^2}$
+
+
+```{r}
+#help("volatility")
+SP500.vol.parkinson<-volatility( SP500[,3:6], n=21, calc="parkinson", N=252)
+SP500.vol.parkinson.0<- xts(x=SP500.vol.parkinson, order.by=SP500$date)
+autoplot(SP500.vol.parkinson.0)
+```
+
+Note that the Parkinson volatility component for a day will be positive if the daily range (High minus Low) is positive, even if the Close-to-Close return is zero.
+
+
+\newpage
+## 1.3  Garman-Klass OHLC Volatility
+
+The Garman and Klass estimator for estimating historical volatility assumes Brownian motion with zero drift and no opening jumps (i.e. the opening price equals the close of the previous period). This estimator is 7.4 times more efficient than the close-to-close estimator.
+
+
+$\sigma = \sqrt{ \frac{N}{n} \sum_{i=1}^n \left[ \textstyle\frac{1}{2}\displaystyle \left( \ln \frac{H_i}{L_i} \right)^2  - (2\ln 2-1)  \left( \ln \frac{C_i}{O_i} \right)^2 \right]}$
+
+
+```{r}
+#help("volatility")
+SP500.vol.garman.klass<-volatility( SP500[,3:6], n=21, calc="garman.klass", N=252)
+SP500.vol.garman.klass.0<- xts(x=SP500.vol.garman.klass, order.by=SP500$date)
+autoplot(SP500.vol.garman.klass.0)
+```
+
+
+\newpage
+## 1.4 Rogers and Satchel  OHLC Volatility
+
+
+
+$\sigma = \sqrt{ \textstyle\frac{N}{n} \sum_{i=1}^n \left[  (\ln \textstyle\frac{H_i}{C_i})( \ln \textstyle\frac{H_i}{O_i})+  (\ln \textstyle\frac{L_i}{C_i})( \ln \textstyle\frac{L_i}{O_i} )  \right]}$
+ 
+ 
+The Roger and Satchell historical volatility estimator allows for non-zero drift, but assumed no opening jump. 
+
+
+```{r}
+#help("volatility")
+SP500.vol.rogers.satchell<-volatility( SP500[,3:6], n=21, calc="rogers.satchell", N=252)
+SP500.vol.rogers.satchell.0<- xts(x=SP500.vol.rogers.satchell, order.by=SP500$date)
+autoplot(SP500.vol.rogers.satchell.0)
+```
+
+\newpage
+
+## 1.5 Garman-Klass Yang and Zhang Historical Open-High-Low-Close Volatility
+
+
+Yang and Zhang derived an extension to the Garman-Klass historical volatility estimator that allows for opening jumps. It assumes Brownian motion with zero drift. This is currently the preferred version of open-high-low-close volatility estimator for zero drift and has an efficiency of 8 times the classic close-to-close estimator. Note that when the drift is nonzero, but instead relative large to the volatility, this estimator will tend to overestimate the volatility. 
+
+
+$\sigma = \sqrt{ \textstyle\frac{N}{n} \sum \left[ 
+\left( \ln \textstyle\frac{O_i}{C_{i-1}} \right)^2  + 
+\textstyle\frac{1}{2}\displaystyle 
+\left( \ln \textstyle\frac{H_i}{L_i} \right)^2  
+- (2\ln 2-1)  \left( \ln\textstyle\frac{C_i}{O_i} \right)^2 \right]}$
+
+
+
+```{r}
+#help("volatility")
+SP500.vol.gk.yz<-volatility( SP500[,3:6], n=21, calc="gk.yz", N=252)
+SP500.vol.gk.yz.0<- xts(x=SP500.vol.gk.yz, order.by=SP500$date)
+autoplot(SP500.vol.gk.yz.0)
+```
+
+\newpage
+
+## 1.6 Yang and Zhang Volatility Estimator
+
+The Yang and Zhang historical volatility estimator has minimum estimation error, and is independent of drift and opening gaps. It can be interpreted as a weighted average of the Rogers and Satchell estimator, the close-open volatility, and the open-close volatility.
+
+When using the volatility() function of the R package TTR (in tidyquant), users may override the default values of $\alpha$ (1.34 by default) or $k$ used in the calculation by specifying alpha or $k$ in the following expressions, respectively. Specifying $k$ will cause alpha to be ignored, if both are provided.
+
+
+$\begin{array}{lcl}
+s &=& sqrt(s2o + k*s2c + (1-k)*(s2rs^2))\\
+s2o &=& N * runVar(log(Op/lag(Cl,1)), n=n) \\
+s2c &=& N * runVar(log(Cl/Op), n=n) \\
+s2rs &=& volatility(OHLC, n, "rogers.satchell", N, ...)\\
+k &=& (alpha-1) / (alpha + (n+1)/(n-1)) \\
+\end{array}$
+
+
+
+```{r}
+#help("volatility")
+SP500.vol.yang.zhang<-volatility( SP500[,3:6], n=21, calc="yang.zhang", N=252)
+SP500.vol.yang.zhang.0<- xts(x=SP500.vol.yang.zhang, order.by=SP500$date)
+autoplot(SP500.vol.yang.zhang.0)
+```
+
+\newpage
+
+##  1.7 Panel time series plot of  all volatility measures
+
+```{r}
+SP500.vols<- merge.xts(
+  SP500.vol.close.0,
+  SP500.vol.parkinson.0,
+  SP500.vol.garman.klass.0,
+  SP500.vol.rogers.satchell.0,
+  SP500.vol.gk.yz.0,
+  SP500.vol.yang.zhang.0
+)
+
+names(SP500.vols)<-c("Close","Parkinson","GK","RS","GK.YZ","YZ")
+
+autoplot(SP500.vols)
+```
+
+##  1.8 Time series plot of  all volatility measures
+
+
+In first version of this program the following code worked
+```r 
+autoplot(SP500.vols, facets =FALSE)
+```
+
+In RStudio cloud it did not. We now construct the figure directly.
+
+```{r}
+SP500.vols0<- data.frame(SP500.vols)
+names(SP500.vols0)
+SP500.vols0$date<- as.Date(time(SP500.vols))
+SP500.vols00<- pivot_longer(SP500.vols0,cols=c(1:6), names_to="model")
+ggplot(SP500.vols00, aes(x=date, y=value, col=model)) + geom_line()
+```
+
+## `1.9 All volatility measures for 2023-2024
+
+
+```{r}
+volmat0<-window(SP500.vols, start=as.Date("2023-01-01"))
+volmat00<- data.frame(volmat0)
+volmat00$date<-as.Date(time(volmat0))
+volmat000<- pivot_longer(volmat00,cols=c(1:6), names_to="model")
+ggplot(volmat000, aes(x=date, y=value, col=model)) + geom_line()
+
+```
+
+# 2. Modeling 2023-2024 Volatilities 
+
+```{r}
+volmat0<-window(SP500.vols, start=as.Date("2023-01-01"))
+autoplot(volmat0)
+```
+
+
+## 2.1 Modeling Close-to-Close Volatility
+
+### 2.1.1 Naive model (Random Walk) of Close-to-Close Volatility
+
+```{r}
+# Focus on Close
+volmat0.Close<-volmat0$Close
+
+ggAcf(volmat0.Close)
+volmat0.Close.naive<-naive(volmat0.Close)
+checkresiduals(volmat0.Close.naive)
+forecast(volmat0.Close.naive)  %>% autoplot()
+accuracy.volmat0.Close.naive<-accuracy(volmat0.Close.naive)
+accuracy.volmat0.Close.naive
+MAPE.volmat0.Close.naive<-accuracy.volmat0.Close.naive[1,5]
+```
+
+
+### 2.1.2 Arima model of Close-to-Close Volatility 
+
+
+
+
+
+```{r}
+# Focus on Close
+volmat0.Close<-volmat0$Close
+ggAcf(volmat0.Close)
+ggAcf(volmat0.Close, type="partial")
+volmat0.Close.arima<-auto.arima(volmat0.Close)
+volmat0.Close.arima
+checkresiduals(volmat0.Close.arima)
+forecast(volmat0.Close.arima) %>% autoplot()
+accuracy(volmat0.Close.arima)
+```
+
+## 2.2 Modeling Yang Zhang OHLC Volatility
+
+
+### 2.2.1 Naive model (Random Walk) of Yang Zhang OHLC Volatility 
+
+
+```{r}
+y.YZ<- volmat0$YZ
+
+ggAcf(y.YZ)
+y.YZ.naive<-naive(y.YZ)
+checkresiduals(y.YZ.naive)
+forecast(y.YZ.naive)  %>% autoplot()
+accuracy.YZ.naive<-accuracy(y.YZ.naive)
+accuracy.YZ.naive
+MAPE.YZ.naive<-accuracy.YZ.naive[1,5]
+```
+
+### 2.2.2 Arima model of Yang Zhang OHLC Volatility 
+
+
+```{r}
+# Focus on YZ
+volmat0.YZ<-volmat0$YZ
+ggAcf(volmat0.YZ)
+ggAcf(volmat0.YZ, type="partial")
+volmat0.YZ.arima<-auto.arima(volmat0.YZ)
+volmat0.YZ.arima
+checkresiduals(volmat0.YZ.arima)
+forecast(volmat0.YZ.arima) %>% autoplot()
+accuracy(volmat0.YZ.arima)
+```
+
+\newpage
+
+# 3. Fitting Seasonal Arima Models
+
+
+## 3.1 Seasonal Arima Model of Close-to-Close Volatility 
+
+
+The ACF of the residuals to the naive model for close-to-close volatility had high autocorrelations at lag 21, equal to the time period for computing the rolling volatility.
+
+```{r}
+# Focus on Close defining frequency equal to time period of volatility computation
+volmat0.Close<-ts(volmat0$Close,start=1, frequency=21)
+ggAcf(volmat0.Close)
+ggAcf(volmat0.Close, type="partial")
+```
+```{r}
+# Following command raised error in 2023
+
+#volmat0.Close.arima<-auto.arima(volmat0.Close)
+volmat0.dClose.arima<-auto.arima(diff(volmat0.Close))
+volmat0.dClose.arima
+checkresiduals(volmat0.dClose.arima)
+forecast(volmat0.dClose.arima) %>% autoplot() + xlab("Time (multiples of 21 days)")
+accuracy(volmat0.dClose.arima)
+```
+
+## 3.2 Seasonal Arima Model of Yang Zhang OHLC Volatility 
+
+
+
+With the Yang Zhang Volatility computed on price series of length 21 days, fit seasonal models with frequency (number of seasons per `year') equal to 21.
+
+```{r}
+# Focus on YZ, defining frequency equal to time period of volatility computation
+volmat0.YZ<-ts(volmat0$YZ,start=1, frequency=21)
+ggAcf(volmat0.YZ)
+ggAcf(volmat0.YZ, type="partial")
+```
+```{r}
+volmat0.YZ.arima<-auto.arima(volmat0.YZ)
+volmat0.YZ.arima
+checkresiduals(volmat0.YZ.arima)
+forecast(volmat0.YZ.arima) %>% autoplot() + xlab("Time (multiples of 21 days)")
+accuracy.volmat0.YZ.arima<-accuracy(volmat0.YZ.arima)
+accuracy.volmat0.YZ.arima
+MAPE.volmat0.YZ.arima<- accuracy.volmat0.YZ.arima[1,5]
+```
+
+*Note:*
+
+
+* The MAPE of the Seasonal Arima model of the YZ volatility is `r MAPE.volmat0.YZ.arima` versus `r MAPE.volmat0.Close.naive` for the Naive model of the Close volatility
+
+* Note whether the coefficients of the seasonal Arima model are significant or highly significant in terms of being many multiples of their standard errors.
+
+* In addition to being a more efficient estimate of historical volatility (theoretically), evaluate whether the predictability of the YZ volatility is stronger than that of the Close volatility (compare accuracy statistics for the two models).
+
+
+\newpage
+
+# 4. Comparing Close-to-Close and Yang-Zhang Volatilities
+
+
+We first compare daily pairs of (Close,YZ) volatilities for 2023 to 2024
+
+```{r}
+gg0<-ggplot(data.frame(volmat0), aes(x=Close, y=YZ)) + geom_point()+  geom_abline(intercept=0, slope=1)
+print(gg0 + ggtitle("Comparing YZ to Close Volatilities (2023-2024)"))
+```
+
+*Note:*
+
+* Is the YZ volatility is  generally smaller than the Close volatility?
+* There are cases when the YZ volatility is much higher than the Close volatility
+* Theoretically, the variance of the  Close volatility is much higher than the variance of the YZ volatility.
+
+\newpage
+
+Second, we compare the volatilities for the entire analysis period
+
+
+```{r}
+gg0<-ggplot(data.frame(SP500.vols), aes(x=Close, y=YZ)) + geom_point(alpha=0.1)+
+geom_abline(intercept=0, slope=1)
+print(gg0 + ggtitle("Comparing YZ to Close Volatilities (entire analysis period)"))
+```
+
+\newpage
+
+# References
+
+
+* Garman, M. B. and Klass, M. J. (1980). On the estimation
+of security price volatilities from historical data. Journal of business,
+pages 67-78 
+
+* Parkinson, M. (1980). The extreme value method for estimating
+the variance of the rate of return. Journal of business, pages 61-65.
+
+
+* Rogers, L. C., Satchell, S. E., and Yoon, Y. (1994). Estimating
+the volatility of stock prices: a comparison of methods that use high
+and low prices. Applied Financial Economics, 4(3):241-247.
+
+*  Rogers, L. C. G. and Satchell, S. E. (1991). Estimating
+variance from high, low and closing prices. The Annals of Applied
+Probability, pages 504-512.
+
+
+*  Yang, D. and Zhang, Q. (2000). Drift-independent
+volatility estimation based on high, low, open, and close prices. The Journal
+of Business, 73(3):477-492.
+
+
+* Hyndman, Rob J, and Athanasopoulos, George (2018) Forecasting: Principles and Practice (2nd ed), \url{https://otexts.com/fpp2/}
+
