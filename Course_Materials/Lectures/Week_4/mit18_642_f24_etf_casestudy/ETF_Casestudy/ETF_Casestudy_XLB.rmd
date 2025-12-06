@@ -1,0 +1,694 @@
+---
+title: "ETF Casestudy"
+author: "Peter Kempthorne"
+date: "2024-09-23"
+output:
+  pdf_document:
+    toc: true
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# 0. Load Libraries
+
+```{r}
+library("quantmod")  
+library("tseries")  
+library("ggplot2")
+library("reshape2")
+library("tidyverse")
+library("tidyquant")
+library("car")
+library("ggfortify")
+library("glmnet")
+
+```
+
+\newpage
+# 1. Load data into R session  
+
+##   1.1  Daily Stock Price Data from Yahoo
+
+ Apply quantmod(sub-package TTR)  function:        getYahoodata 
+
+ Returns historical data for any symbol at the website
+ 
+ \url{http://finance.yahoo.com}
+ 
+
+###  1.1.1 Set start and end date for collection in YYYYMMDD (numeric) format
+
+```{r}
+date.start<-"2000-01-01"
+date.end<-"2024-09-20"
+
+```
+### 1.1.2 Input list of ETF symbols
+
+```{r}
+options(stringsAsFactors=FALSE)
+list.etf0.labels0<-read.table(file="spyders_symbols_labels.csv",sep=",", header=FALSE)
+list.etf0<-as.character(list.etf0.labels0[,1])
+
+
+for (etf0 in list.etf0){
+  #etf0<-"XLB"
+  getSymbols(etf0, from=date.start, to=date.end)
+print(etf0)
+}
+
+```
+
+
+### 1.1.3 Construct matrix of closing prices
+
+
+```{r}
+etf0.pmat0<-matrix(NA, nrow=NROW(SPY),ncol=length(list.etf0))
+dimnames(etf0.pmat0)<-list(dimnames(SPY)[[1]], list.etf0)
+# Create zoo objects of just Adjusted prices
+for (j.etf0 in c(1:length(list.etf0))){
+  #j.etf0<-3
+  j.etf0.name0<-list.etf0[j.etf0]
+  obj0.0<-get(list.etf0[j.etf0])[,6]
+  dimnames(obj0.0)[[2]]<-j.etf0.name0
+  obj0.0.name0<-paste(j.etf0.name0,".0",sep="")
+  print(obj0.0.name0)
+  assign(obj0.0.name0, obj0.0)  
+}
+
+list.etf0.0<-paste(list.etf0,".0",sep="")
+
+pmat0.0<-eval(parse(text=paste("merge(",
+                    paste(list.etf0.0,collapse=","),
+                    ")", collapse="")))
+```
+
+
+### 1.1.4 Plot time series of daily SPY prices
+
+```{r}
+plot(pmat0.0[,"SPY"])
+chartSeries(pmat0.0[,"XLF"])
+```
+
+
+## 1.2 Weekly Stock Price Data
+
+### 1.2.1 Create matrix of weekly closing prices
+
+```{r}
+pmat0.0.1.weekly<-to.weekly(pmat0.0[,1])
+pmat0.0.weekly.coredata<-matrix(NA, nrow=nrow(pmat0.0.1.weekly), ncol=ncol(pmat0.0))
+
+for (jcol0 in c(1:ncol(pmat0.0))){
+  
+  pmat0.0.weekly.coredata[,jcol0]<- to.weekly(pmat0.0[,jcol0])[,4]
+}
+
+dim(pmat0.0.weekly.coredata)
+
+length(time(pmat0.0.1.weekly))
+as.numeric(time(pmat0.0.1.weekly)[1:5])
+
+
+  pmat0.0.weekly<-zoo(pmat0.0.weekly.coredata, order.by=time(pmat0.0.1.weekly))
+
+dimnames(pmat0.0.weekly)[[2]]<-dimnames(pmat0.0)[[2]]
+```
+
+### 1.2.2 Create matrix of weekly log returns
+
+```{r}
+plot(pmat0.0.weekly[,"XLF"])
+
+head(pmat0.0.weekly)
+
+rmat0.0.weekly<-na.omit(diff(log(pmat0.0.weekly)))
+```
+
+
+Table frequency of return horizon in days. Note that September 11, 2001 corresponds to 11.
+```{r}
+table(diff(time(rmat0.0.weekly)))
+cor(rmat0.0.weekly)
+dim(rmat0.0.weekly)
+```
+### 1.2.3 Create separate objects for sector etfs and index etfs
+
+```{r}
+rmat0.0.weekly.sectoretfs<-rmat0.0.weekly[,c(4:12)]
+list.sectoretfs<-dimnames(rmat0.0.weekly.sectoretfs)[[2]]
+list.sectoretfs.labels<-list.etf0.labels0[4:12,2]
+list.sectoretfs.labels.0<-paste(list.sectoretfs.labels,"(",list.sectoretfs,")",sep="")
+
+rmat0.0.weekly.indexetfs<-rmat0.0.weekly[,c(1:3, 13)]
+
+list.indexetfs<-dimnames(rmat0.0.weekly.indexetfs)[[2]]
+
+head(rmat0.0.weekly.indexetfs)
+
+
+list.sectoretfs<-dimnames(rmat0.0.weekly.sectoretfs)[[2]]
+list.sectoretfs.labels<-list.etf0.labels0[4:12,2]
+list.sectoretfs.labels.0<-paste(list.sectoretfs.labels,"(",list.sectoretfs,")",sep="")
+
+rmat0.0.weekly.indexetfs<-rmat0.0.weekly[,c(1:3, 13)]
+
+list.indexetfs<-dimnames(rmat0.0.weekly.indexetfs)[[2]]
+
+```
+
+## 1.3 Save data objects for casestudy in R data file
+
+```{r}
+list.obj.tosave0<-c(
+  "pmat0.0.weekly",
+  "rmat0.0.weekly.sectoretfs",
+  "rmat0.0.weekly.indexetfs",
+  "list.sectoretfs",
+  "list.sectoretfs.labels",
+  "list.sectoretfs.labels.0",
+  "list.indexetfs")
+
+
+save(file="casestudy_1_0_etfs.RData", list=list.obj.tosave0)
+
+
+```
+
+\newpage
+# 2.Analysis of returns for specific period (2013-2024)
+
+
+## 2.1 Subset data objects for specific period
+
+```{r}
+period0.startyear0<-"2013"
+period0.endyear0<-"2024"
+period0.startdate0<-as.Date(paste(period0.startyear0,"-01-01",sep=""))
+period0.enddate0<-as.Date(paste(period0.endyear0,"-12-31",sep=""))
+period0.label0<-paste("Period: ", period0.startyear0, "-" , period0.endyear0,sep="")
+
+rmat0.0.weekly.sectoretfs.period0<-window(rmat0.0.weekly.sectoretfs,
+                                          start = period0.startdate0,
+                                          end=period0.enddate0)
+
+rmat0.0.weekly.indexetfs.period0<-window(rmat0.0.weekly.indexetfs,
+                                          start = period0.startdate0,
+                                          end=period0.enddate0)
+
+tail(rmat0.0.weekly.sectoretfs.period0)
+tail(rmat0.0.weekly.indexetfs.period0)
+```
+
+## 2.2 Define y0 equal to weekly returns of specific sector etf (XLB)
+
+
+```{r}
+y0.name="XLB (Materials ETF)"
+y0.symbol="XLB"
+y0<-rmat0.0.weekly.sectoretfs.period0$XLB
+```
+
+The following R code can be copied above to change the choice of sector etf
+
+```{r}
+
+if (FALSE) {
+# 1.1 Change to XLK Technology:
+#   Define y0 equal to weekly returns of sector etf XLK   
+y0.name="XLK (Technology ETF)"
+y0.symbol="XLK"
+y0<-rmat0.0.weekly.sectoretfs.period0$XLK
+
+# 1.2 Change to XLI Industrials:
+#   Define y0 equal to weekly returns of sector etf XLI   
+y0.name="XLI (Industrials ETF)"
+y0.symbol="XLI"
+y0<-rmat0.0.weekly.sectoretfs.period0$XLI
+
+}
+```
+
+
+## 2.3 Define df0 equal to data frame with y0 and index etfs  
+
+```{r}
+df0<-data.frame(cbind(y0,rmat0.0.weekly.indexetfs.period0))
+```
+
+
+
+## 2.4  Print out summary statistics for weekly returns 
+
+### 2.4.1 Annual means, volatilities
+```{r}
+apply(df0,2,summary)
+mean.annual<-apply(df0,2,mean)*52
+vol.annual<-sqrt(52*apply(df0,2,var))
+data.frame(mean=mean.annual, vol=vol.annual)
+```
+
+
+### 2.4.2 Pairwise correlations and pairs plots
+
+```{r}
+cor(df0)
+
+
+pairs(df0,col='blue')
+```
+
+## 2.5  Compute/plot cumulative returns 
+
+```{r}
+# Convert df0 to cumulative return series
+# Allstarting at 1.
+
+df0cumret<-data.frame(exp(apply(log(1+df0),2,cumsum)))
+names(df0cumret)
+names(df0cumret)[1]<-y0.symbol
+# Rename y0 to actual symbol for plotting
+# Add Date variable (after computing cumulative returns)
+df0cumret$Date<-time(rmat0.0.weekly.indexetfs.period0)
+
+# Apply melt function from reshape2 package for using ggplot
+meltdf0cumret <- melt(df0cumret,id="Date")
+#names(meltdf)
+#meltdf$variable
+
+gg0<-ggplot(meltdf0cumret,aes(x=Date,y=value,colour=variable,group=variable)) +
+  geom_line()
+print(gg0)
+```
+
+\newpage
+# 3. Regression of Sector ETF on Index ETFs
+
+
+## 3.1   Fit regression of y0 on index etf returns  
+```{r}
+fit<-lm(y0 ~., data=df0); fit.summary<-summary(fit)
+
+fit.summary
+```
+
+
+```{r}
+#   Note list components of output from summary()
+names(fit.summary)
+#   print method for fit.summary is condensed
+```
+
+## 3.2 Plot Actual versus Fitted Values
+
+```{r}
+ plot(fit$fitted.values, df0$y0,
+        xlab="Fitted Value",
+        ylab = "Actual Value",
+        main=paste(c("Regression Model","\n", y0.name,
+        "\nR-Squared =",
+        as.character(round(fit.summary$r.squared,digits=2))),
+                    collapse=""))
+  abline(a=0,b=1,col="blue",lwd=3)
+```
+
+\newpage
+# 4. Use R package car to analyse residuals/influence
+
+```{r}
+library(car)
+```
+
+
+## 4.1 plot() method gives 4-panel plots of residuals and Leverage
+  
+```{r}
+  oldpar=par(no.readonly=TRUE)
+  layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page
+  plot(fit) ; par(oldpar,no.readonly=TRUE)
+```  
+## 4.2 studres() Studentized residuals and qqPlot()  -
+
+```{r}
+#     plot histogram and t-dist QQ plot 
+par(mfcol=c(1,2));
+hist(rstudent(fit),breaks=50);
+qqPlot(fit,col="blue",col.lines="red")
+#
+```
+
+
+## 4.3 influencePlot() output 
+```{r}
+
+par(mfcol=c(1,1))
+
+influencePlot(lm(y0~., data=df0))
+```
+
+
+## 4.4 residualPlots()
+
+Visually test for curvature in linear regression terms.
+
+```{r}
+
+residualPlots(lm(y0~., data=df0),tests=FALSE)
+```
+
+Print out test results
+
+```{r}
+# Test results (for curvature in plots)
+residualPlots(lm(y0~., data=df0),tests=TRUE, plot=FALSE)
+
+```
+\newpage
+# 5. Compare Regression Using Z-scores of Predictors
+
+
+## 5.1 Reproduce Linear Regression on Predictors
+
+```{r}
+# df0: data frame with security and indexes
+#   y0
+#   Regress y0 on indexes  
+
+#   Add arguments to get x matrix and y
+fit<-lm(y0 ~., data=df0,x=TRUE,y=TRUE);
+fit.summary<-summary(fit)
+fit.summary
+
+fit$coefficients
+# Output argument x has matrix of predictor variables
+head(fit$x)
+#
+```
+
+## 5.2 Repeat regression with Z-scores of index etfs 
+
+```{r}
+# The R function scale outputs z scores of data vectors
+df0.zscore<-data.frame(cbind(y0,apply(rmat0.0.weekly.indexetfs.period0,2,scale)))
+fit<-lm(y0 ~., data=df0.zscore, x=TRUE,y=TRUE); fit.summary<-summary(fit)
+fit.summary
+```
+
+Note the two regressions have identical results for  t-stats, R-Square.
+
+
+\newpage
+# 6. PCA of Explanatory Variables 
+
+## 6.1 Extract scaled x matrix (except intercept)
+
+```{r}
+x=fit$x[,-1]
+cor(x)
+var(x)
+```
+
+
+## 6.2 Compute PCA of x 
+
+The R function princomp() is used below.  Note that other functions oerforming PCA are  available, e.g. prcomp().
+
+
+```{r}
+
+#library(ggplot2)
+#library(ggfortify)
+x.princomp<-princomp(x)
+summary(x.princomp)
+```
+
+
+Note available output from princomp() is a named list:  
+
+```{r}
+names(x.princomp)
+```
+## 6.3 The Screeplot:  Barplot of Principal Component Variances
+
+```{r}
+screeplot(x.princomp)
+```
+##  6.4 Loadings of Principal Components
+
+Printing out the loadings matrix (all values and with cutoff):
+
+```{r}
+# Print out loadings  
+x.princomp$loadings
+# Get all values with no cutoffs
+print(x.princomp$loadings,cutoff=0.)
+
+```
+
+Plotting the loadings of each Principal Component variable
+
+```{r}
+# Plot loadings of PC1-PC4  
+
+barplot(x.princomp$loadings[,1], main="PC1 Loadings")
+
+barplot(x.princomp$loadings[,2], main="PC2 Loadings")
+
+barplot(x.princomp$loadings[,3], main="PC3 Loadings")
+
+barplot(x.princomp$loadings[,4], main="PC4 Loadings")
+```
+
+
+\newpage
+# 7. Regressions on PC variables  
+
+## 7.1 Univariate regressions  
+
+```{r}
+
+# Loop over all PC Variables
+for (j in 1:NCOL(x.princomp$scores)){
+lm.j<-lm(df0$y0 ~ x.princomp$scores[,j])
+lm.j.summary<-summary(lm.j)
+
+# Use lsfit() to compute p-value s
+lsfit.j<-lsfit(x=x.princomp$scores[,j], y=y0)
+lsfit.j.print<-ls.print(lsfit.j)
+
+plot(x.princomp$scores[,j], df0$y0,main=c(" \n \n  "))
+abline(lm.j, col=j,lwd=2)
+abline(h=mean(df0$y0),col='gray')
+title(main=paste(c("y0 ~ pc",as.character(j),
+    "\n R-Squared = ", as.character(round(lm.j.summary$r.squared,digits=3)),
+    "\n p-value = ", as.character(lsfit.j.print$summary[1,6])),
+     collapse=""))
+}
+```
+
+
+## 7.2 Regression model on all PC variables  
+
+```{r}
+pcregfit<-lm(df0$y0 ~ x.princomp$scores)
+summary(pcregfit)
+pcregfit.summary<-summary(pcregfit)
+```
+
+ 
+## 7.3  Use PCA regression to recompute regression parameters 
+
+
+```{r}
+#       on original variables 
+pcbetavec<-as.numeric(pcregfit$coefficients[-1])
+x.princomp$loadings
+betaFromPCA<-x.princomp$loadings %*% as.matrix(pcbetavec)
+fit$coefficients
+```
+
+
+## 7.4 Compute regression parameter based on only first 3 pc vars
+
+```{r}
+pcbetavec
+
+pcbetavec123<-0*pcbetavec
+pcbetavec123[1:3]<-pcbetavec[1:3]
+
+betaFromPC123<-x.princomp$loadings %*% as.matrix(pcbetavec123)
+```
+
+## 7.5 Compute regression parameter based on significant  pc vars
+
+The code below computes the regression parameter (original scale) using only the statistically significant pc variables, as determined by
+those that have abs t stat $>$ sqrt(2).
+
+```{r}
+ind.tokeep<-as.numeric(
+  abs(pcregfit.summary$coefficients[-1,3])>sqrt(2))
+
+pcbetavectokeep<-pcbetavec*ind.tokeep
+
+betaFromPCtokeep<-x.princomp$loadings %*% as.matrix(pcbetavectokeep)
+```
+
+## 7.6  Create table of betas from these three fits
+
+```{r}
+tab.betas<-cbind(betaFromPCA, betaFromPC123, betaFromPCtokeep)
+dimnames(tab.betas)[[2]]<-c("LS","PC123","PCsignif")
+print(tab.betas)
+```
+
+```{r}
+# 5. Compare coefficients from fits including LASSO and Ridge  
+
+barplot(t(as.matrix(tab.betas)), beside=TRUE,
+        col=rainbow(5), cex.names=.5,
+        legend=TRUE, args.legend=list(cex=.7))
+title(main="Regression Coefficients By Method")
+
+```
+
+## 7.7 Demonstrate equality of LS and PCA Regression Fitted Values
+
+```{r}
+# pcregfit equals LS fit
+
+par(mfcol=c(1,1))
+    plot(pcregfit$fitted.values, fit$fitted.values)
+    
+```
+
+
+
+\newpage
+# 8. Ridge and Lasso Regression Fits
+
+
+## 8.1 Load glmnet package for ridge/lasso regressions
+
+```{r}
+library(glmnet)
+```
+
+## 8.2 Define y vector and x matrix for ridge/lasso fits
+
+```{r}
+y=fit$y
+x=fit$x[,-1]
+```
+
+
+## 8.3 Plot coefficient trace of ridge regression model
+```{r}
+y.glmnet.ridge<-glmnet(x,y, alpha=0)
+# alpha=0 for Ridge
+plot(y.glmnet.ridge, label=TRUE, main="Ridge")
+abline(h=0,col='gray')
+```
+
+
+## 8.4 Plot coefficient trace of lasso regression model ----
+
+```{r}
+y.glmnet.lasso<-glmnet(x,y, alpha=1)
+# alpha=1 for LASSO
+plot(y.glmnet.lasso, label=TRUE,main="Lasso")
+abline(h=0,col='gray')
+```
+
+## 8.5 Apply Cross Validation to choose ridge parameters 
+
+```{r}
+lambdas=10^seq(3.,-5, by=-.1)
+summary(y.glmnet.ridge)
+#
+# Cross-validation estimates of prediction error
+# ridge case (alpha=0)
+y.glmnet.ridge<-glmnet(x,y,alpha=0, lambda=lambdas)
+summary(y.glmnet.ridge)
+y.cv.glmnet.ridge<-cv.glmnet(x,y,alpha=0, lambda=lambdas)
+plot(y.cv.glmnet.ridge, main="Ridge CV Estimates of MSE")
+optlambda.ridge<-y.cv.glmnet.ridge$lambda.min
+glmnet.ridgefit<-y.cv.glmnet.ridge$glmnet.fit
+y_predicted.ridge<- predict(glmnet.ridgefit,s=optlambda.ridge,newx=x)
+```
+
+
+Plot Observed vs Fitted for Ridge Regression
+
+```{r}
+plot(y_predicted.ridge, y)
+cor(y_predicted.ridge,y)^2
+
+# Compare ridge fitted to ls fitted
+plot(fit$fitted.values, y_predicted.ridge,
+     main="Ridge Regression\n(Shrinks to Mean)")
+abline(a=0,b=1)
+
+plot(fit$fitted.values, y_predicted.ridge -fit$fitted.values,
+     main="Ridge Regression \n(Shrinks to Mean)")
+abline(h=0)
+abline(v=mean(fit$fitted.values))
+```
+
+# 
+
+## 8.6 Apply Cross Validation to choose lasso parameters 
+
+```{r}
+y.glmnet.lasso<-glmnet(x,y, alpha=1)
+# alpha=1 for lasso
+plot(y.glmnet.lasso, label=TRUE, main="lasso")
+abline(h=0,col='gray')
+
+lambdas=10^seq(3.,-5, by=-.1)
+summary(y.glmnet.lasso)
+#
+# Cross-validation estimates of prediction error
+# lasso case (alpha=1)
+y.glmnet.lasso<-glmnet(x,y,alpha=1, lambda=lambdas)
+summary(y.glmnet.lasso)
+y.cv.glmnet.lasso<-cv.glmnet(x,y,alpha=1, lambda=lambdas)
+plot(y.cv.glmnet.lasso, main="lasso CV Estimates of MSE")
+optlambda.lasso<-y.cv.glmnet.lasso$lambda.min
+glmnet.lassofit<-y.cv.glmnet.lasso$glmnet.fit
+y_predicted.lasso<- predict(glmnet.lassofit,s=optlambda.lasso,newx=x)
+#
+plot(y_predicted.lasso, y)
+cor(y_predicted.lasso,y)^2
+
+# Compare lasso fitted to ls fitted
+plot(fit$fitted.values, y_predicted.lasso,
+     main="lasso Regression \n(Shrinks to Mean)")
+abline(a=0,b=1)
+
+plot(fit$fitted.values, y_predicted.lasso -fit$fitted.values,
+     main="lasso Regression \n(Shrinks to Mean)")
+abline(h=0,v=mean(fit$fitted.values))
+
+## 8.7 Compare coefficients from fits including LASSO and Ridge ----
+
+```{r}
+
+tab.betas<-cbind(betaFromPCA, betaFromPC123, betaFromPCtokeep)
+dimnames(tab.betas)[[2]]<-c("LS","PC123","PCsignif")
+print(tab.betas)
+
+tab.betas2<-data.frame(cbind(tab.betas,
+                  lasso=coef(y.cv.glmnet.lasso,s="lambda.min")[-1],
+                  ridge=coef(y.cv.glmnet.ridge,s="lambda.min")[-1]))
+
+barplot(t(as.matrix(tab.betas2)), beside=TRUE,
+        col=rainbow(5), cex.names=.5,
+        legend=TRUE, args.legend=list(cex=.7))
+title(main="Regression Coefficients By Method")
+
+
+
+
